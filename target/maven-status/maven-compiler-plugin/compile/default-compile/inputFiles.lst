@@ -1,0 +1,12 @@
+/Users/fredfmelo/Projects/inventory-service/src/main/java/com/fredfmelo/inventoryservice/InventoryserviceApplication.java
+/Users/fredfmelo/Projects/inventory-service/src/main/java/com/fredfmelo/inventoryservice/common/exception/BusinessException.java
+/Users/fredfmelo/Projects/inventory-service/src/main/java/com/fredfmelo/inventoryservice/common/exception/ErrorResponse.java
+/Users/fredfmelo/Projects/inventory-service/src/main/java/com/fredfmelo/inventoryservice/common/exception/GlobalExceptionHandler.java
+/Users/fredfmelo/Projects/inventory-service/src/main/java/com/fredfmelo/inventoryservice/common/exception/TechnicalException.java
+/Users/fredfmelo/Projects/inventory-service/src/main/java/com/fredfmelo/inventoryservice/config/AwsConfig.java
+/Users/fredfmelo/Projects/inventory-service/src/main/java/com/fredfmelo/inventoryservice/config/ServiceConfig.java
+/Users/fredfmelo/Projects/inventory-service/src/main/java/com/fredfmelo/inventoryservice/infrastructure/messaging/OrderEventPublisher.java
+/Users/fredfmelo/Projects/inventory-service/src/main/java/com/fredfmelo/inventoryservice/inventory/event/InventoryReservedEvent.java
+/Users/fredfmelo/Projects/inventory-service/src/main/java/com/fredfmelo/inventoryservice/inventory/event/PaymentApprovedEvent.java
+/Users/fredfmelo/Projects/inventory-service/src/main/java/com/fredfmelo/inventoryservice/inventory/listener/PaymentApprovedListener.java
+/Users/fredfmelo/Projects/inventory-service/src/main/java/com/fredfmelo/inventoryservice/inventory/service/InventoryService.java

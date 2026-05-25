@@ -1,0 +1,15 @@
+com/fredfmelo/inventoryservice/config/AwsConfig.class
+com/fredfmelo/inventoryservice/common/exception/ErrorResponse.class
+com/fredfmelo/inventoryservice/config/ServiceConfig.class
+com/fredfmelo/inventoryservice/inventory/service/InventoryService.class
+com/fredfmelo/inventoryservice/config/ServiceConfig$DynamoDb.class
+com/fredfmelo/inventoryservice/common/exception/TechnicalException.class
+com/fredfmelo/inventoryservice/inventory/listener/PaymentApprovedListener.class
+com/fredfmelo/inventoryservice/inventory/event/PaymentApprovedEvent.class
+com/fredfmelo/inventoryservice/common/exception/GlobalExceptionHandler.class
+com/fredfmelo/inventoryservice/common/exception/BusinessException.class
+com/fredfmelo/inventoryservice/config/ServiceConfig$Sns.class
+com/fredfmelo/inventoryservice/infrastructure/messaging/OrderEventPublisher.class
+com/fredfmelo/inventoryservice/config/ServiceConfig$Sqs.class
+com/fredfmelo/inventoryservice/inventory/event/InventoryReservedEvent.class
+com/fredfmelo/inventoryservice/InventoryserviceApplication.class

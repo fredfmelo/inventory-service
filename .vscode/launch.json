@@ -1,0 +1,13 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        
+      {
+        "type": "java",
+        "name": "Run Inventory Service",
+        "request": "launch",
+        "mainClass": "com.fredfmelo.inventoryservice.InventoryServiceApplication",
+        "projectName": "inventory-service"
+      }
+    ]
+  }
