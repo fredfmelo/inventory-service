@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import com.fredfmelo.inventoryservice.inventory.event.InventoryReservedEvent;
 import com.fredfmelo.inventoryservice.inventory.event.PaymentApprovedEvent;
+import com.fredfmelo.inventoryservice.inventory.messaging.InventoryEventPublisher;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +16,8 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 @RequiredArgsConstructor
 public class InventoryService {
+
+    private final InventoryEventPublisher publisher;
 
     public void reserve(PaymentApprovedEvent event) {
         log.info("Reserving inventory order={}",event.orderId());
@@ -27,7 +30,8 @@ public class InventoryService {
 
         log.info("Inventory reserved {}", reserved);
 
-        // next:
-        // publisher.publish(reserved);
+        publisher.publish(reserved);
+
+        log.info("Inventory reserved {}", reserved);
     }
 }

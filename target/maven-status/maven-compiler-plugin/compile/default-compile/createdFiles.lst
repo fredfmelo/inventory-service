@@ -8,6 +8,7 @@ com/fredfmelo/inventoryservice/inventory/listener/PaymentApprovedListener.class
 com/fredfmelo/inventoryservice/inventory/event/PaymentApprovedEvent.class
 com/fredfmelo/inventoryservice/common/exception/GlobalExceptionHandler.class
 com/fredfmelo/inventoryservice/common/exception/BusinessException.class
+com/fredfmelo/inventoryservice/inventory/messaging/InventoryEventPublisher.class
 com/fredfmelo/inventoryservice/config/ServiceConfig$Sns.class
 com/fredfmelo/inventoryservice/infrastructure/messaging/OrderEventPublisher.class
 com/fredfmelo/inventoryservice/config/ServiceConfig$Sqs.class

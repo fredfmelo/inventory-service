@@ -9,4 +9,5 @@
 /Users/fredfmelo/Projects/inventory-service/src/main/java/com/fredfmelo/inventoryservice/inventory/event/InventoryReservedEvent.java
 /Users/fredfmelo/Projects/inventory-service/src/main/java/com/fredfmelo/inventoryservice/inventory/event/PaymentApprovedEvent.java
 /Users/fredfmelo/Projects/inventory-service/src/main/java/com/fredfmelo/inventoryservice/inventory/listener/PaymentApprovedListener.java
+/Users/fredfmelo/Projects/inventory-service/src/main/java/com/fredfmelo/inventoryservice/inventory/messaging/InventoryEventPublisher.java
 /Users/fredfmelo/Projects/inventory-service/src/main/java/com/fredfmelo/inventoryservice/inventory/service/InventoryService.java
