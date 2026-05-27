@@ -19,6 +19,11 @@ public class TechnicalException extends RuntimeException {
         this.status = status;
     }
 
+    public TechnicalException(String message, Throwable cause){
+        super(message, cause);
+        this.status = HttpStatus.INTERNAL_SERVER_ERROR;
+    }
+
     @NonNull
     public HttpStatus getStatus() {
         return status;

@@ -4,43 +4,51 @@ import java.util.Map;
 
 import org.springframework.stereotype.Component;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fredfmelo.inventoryservice.common.exception.TechnicalException;
 import com.fredfmelo.inventoryservice.config.ServiceConfig;
-import com.fredfmelo.inventoryservice.inventory.event.InventoryReservedEvent;
+import com.fredfmelo.inventoryservice.outbox.publisher.OutboxEventPublisher;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.services.sns.SnsClient;
 import software.amazon.awssdk.services.sns.model.MessageAttributeValue;
 import software.amazon.awssdk.services.sns.model.PublishRequest;
 
 @Component
+@Slf4j
 @RequiredArgsConstructor
-public class InventoryEventPublisher {
+public class InventoryEventPublisher implements OutboxEventPublisher{
+
+    private static final String EVENT_TYPE = "eventType";
+    private static final String DATA_TYPE_STRING = "String";
 
     private final SnsClient snsClient;
     private final ServiceConfig config;
-    private final ObjectMapper objectMapper;
 
-    public void publish(InventoryReservedEvent event) {
+    @Override
+    public void publish(String payload, String eventType) {
         try {
-            String payload = objectMapper.writeValueAsString(event);
-
             PublishRequest request = PublishRequest.builder()
                     .topicArn(config.getSns().getOrderTopicArn())
                     .message(payload)
-                    .messageAttributes(Map.of(
-                            "eventType",
-                            MessageAttributeValue.builder()
-                                    .dataType("String")
-                                    .stringValue(event.eventType())
-                                    .build()
-                    ))
+                    .messageAttributes(buildAttributes(eventType))
                     .build();
 
             snsClient.publish(request);
 
-        } catch (Exception ex) {
-            throw new RuntimeException("Failed to publish inventory event", ex);
+            log.info("Published eventType={}", eventType);
+
+        } catch (SdkException ex) {
+            throw new TechnicalException("Error publishing event", ex);
         }
+    }
+
+    private Map<String, MessageAttributeValue> buildAttributes(String eventType) {
+        return Map.of(EVENT_TYPE,
+                MessageAttributeValue.builder()
+                        .dataType(DATA_TYPE_STRING)
+                        .stringValue(eventType)
+                        .build());
     }
 }

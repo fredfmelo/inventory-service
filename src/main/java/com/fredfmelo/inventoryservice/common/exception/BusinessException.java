@@ -18,6 +18,11 @@ public class BusinessException extends RuntimeException {
         this.status = status;
     }
 
+    public BusinessException(String message, Throwable cause){
+        super(message, cause);
+        this.status = HttpStatus.UNPROCESSABLE_ENTITY;
+    }
+
     @NonNull
     public HttpStatus getStatus() {
         return status;

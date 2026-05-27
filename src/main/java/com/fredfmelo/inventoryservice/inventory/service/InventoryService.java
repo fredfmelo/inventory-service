@@ -7,7 +7,7 @@ import org.springframework.stereotype.Service;
 
 import com.fredfmelo.inventoryservice.inventory.event.InventoryReservedEvent;
 import com.fredfmelo.inventoryservice.inventory.event.PaymentApprovedEvent;
-import com.fredfmelo.inventoryservice.inventory.messaging.InventoryEventPublisher;
+import com.fredfmelo.inventoryservice.outbox.service.OutboxService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,21 +17,23 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class InventoryService {
 
-    private final InventoryEventPublisher publisher;
+    private final OutboxService outboxService;
 
     public void reserve(PaymentApprovedEvent event) {
-        log.info("Reserving inventory order={}",event.orderId());
+        log.info( "Reserving inventory order={}", event.orderId());
 
-        InventoryReservedEvent reserved =new InventoryReservedEvent(
+        InventoryReservedEvent reserved = new InventoryReservedEvent(
                         UUID.randomUUID(),
                         "INVENTORY_RESERVED",
                         Instant.now(),
                         event.orderId());
 
-        log.info("Inventory reserved {}", reserved);
-
-        publisher.publish(reserved);
+        //todo: implement inventory businesss
 
         log.info("Inventory reserved {}", reserved);
+
+        outboxService.save(reserved.eventId().toString(),
+                reserved.eventType(),
+                reserved );
     }
 }
