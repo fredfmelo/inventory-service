@@ -6,10 +6,10 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
 @EnableScheduling
-public class InventoryserviceApplication {
+public class InventoryServiceApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(InventoryserviceApplication.class, args);
+		SpringApplication.run(InventoryServiceApplication.class, args);
 	}
 
 }

@@ -3,10 +3,11 @@ package com.fredfmelo.inventoryservice.inventory.event;
 import java.time.Instant;
 import java.util.UUID;
 
-public record InventoryReservedEvent(
-        UUID eventId,
-        String eventType,
-        Instant occurredAt,
-        String orderId
-) {
+import com.fredfmelo.eventdrivencore.event.Event;
+
+public record InventoryReservedEvent(UUID eventId,
+                String traceId,
+                String eventType,
+                Instant occurredAt,
+                String orderId) implements Event {
 }

@@ -3,18 +3,25 @@ package com.fredfmelo.inventoryservice.config;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
+import com.fredfmelo.eventdrivencore.config.DynamoProperties;
+
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter
 @Setter
 @Component
-@ConfigurationProperties(prefix = "aws")
-public class ServiceConfig {
+@ConfigurationProperties
+public class ServiceConfig implements DynamoProperties {
 
-    private DynamoDb dynamodb;
-    private Sns sns;
-    private Sqs sqs;
+    private Aws aws;
+
+    @Getter
+    @Setter
+    public static class Aws {
+        private DynamoDb dynamodb;
+        private Sns sns;
+    }
 
     @Getter
     @Setter
@@ -28,9 +35,8 @@ public class ServiceConfig {
         private String orderTopicArn;
     }
 
-    @Getter
-    @Setter
-    public static class Sqs {
-        private String inventoryQueue;
+    @Override
+    public String tableName() {
+        return aws.getDynamodb().getTableName();
     }
 }

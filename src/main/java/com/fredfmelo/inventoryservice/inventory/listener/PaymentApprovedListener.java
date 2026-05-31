@@ -2,7 +2,7 @@ package com.fredfmelo.inventoryservice.inventory.listener;
 
 import org.springframework.stereotype.Component;
 
-import com.fredfmelo.inventoryservice.idempotency.executor.IdempotentExecutor;
+import com.fredfmelo.eventdrivencore.idempotency.executor.IdempotentExecutor;
 import com.fredfmelo.inventoryservice.inventory.event.PaymentApprovedEvent;
 import com.fredfmelo.inventoryservice.inventory.service.InventoryService;
 

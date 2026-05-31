@@ -5,9 +5,9 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 
+import com.fredfmelo.eventdrivencore.outbox.service.OutboxService;
 import com.fredfmelo.inventoryservice.inventory.event.InventoryReservedEvent;
 import com.fredfmelo.inventoryservice.inventory.event.PaymentApprovedEvent;
-import com.fredfmelo.inventoryservice.outbox.service.OutboxService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,21 +19,22 @@ public class InventoryService {
 
     private final OutboxService outboxService;
 
-    public void reserve(PaymentApprovedEvent event) {
-        log.info( "Reserving inventory order={}", event.orderId());
+    public void reserve(PaymentApprovedEvent paymentApprovedEvent) {
+        log.info("Reserving inventory order={}", paymentApprovedEvent.orderId());
 
-        InventoryReservedEvent reserved = new InventoryReservedEvent(
-                        UUID.randomUUID(),
-                        "INVENTORY_RESERVED",
-                        Instant.now(),
-                        event.orderId());
+        InventoryReservedEvent inventoryReservedEvent = new InventoryReservedEvent(UUID.randomUUID(),
+                paymentApprovedEvent.traceId(),
+                "INVENTORY_RESERVED",
+                Instant.now(),
+                paymentApprovedEvent.orderId());
 
-        //todo: implement inventory businesss
+        simulateInventory();
 
-        log.info("Inventory reserved {}", reserved);
+        // TODO: when the real inventory structure is define, replace this save with a transactionalRepository that saves the business and outbox entity in the same transaction
+        outboxService.save(inventoryReservedEvent);
+    }
 
-        outboxService.save(reserved.eventId().toString(),
-                reserved.eventType(),
-                reserved );
+    private void simulateInventory() {
+        log.info("[BUSINESS-FLOW-PLACEHOLDER] Simulating inventory...");
     }
 }
