@@ -2,6 +2,12 @@ spring:
   application:
     name: order-service
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
 server:
   port: 8082
 
