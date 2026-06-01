@@ -36,12 +36,19 @@
         </dependencies>
     </dependencyManagement>
 
+    <repositories>
+        <repository>
+            <id>github</id>
+            <url>https://maven.pkg.github.com/fredfmelo/event-driven-core</url>
+        </repository>
+    </repositories>
+
     <dependencies>
 
         <dependency>
             <groupId>com.fredfmelo</groupId>
             <artifactId>event-driven-core</artifactId>
-            <version>0.0.1-SNAPSHOT</version>
+            <version>1.0.0</version>
         </dependency>
 
         <dependency>
