@@ -1,0 +1,357 @@
+openapi: 3.0.3
+
+info:
+  title: Inventory Service API
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8080
+
+paths:
+
+  /products:
+
+    post:
+      tags:
+        - Product
+      summary: Create product
+      operationId: createProduct
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProductRequest'
+
+      responses:
+        '201':
+          description: Product created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateProductResponse'
+
+    get:
+      tags:
+        - Product
+      summary: List marketplace products
+      operationId: getProducts
+
+      parameters:
+        - name: active
+          in: query
+          required: false
+          schema:
+            type: boolean
+
+      responses:
+        '200':
+          description: Products found
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProductSummaryResponse'
+
+  /products/me:
+
+    get:
+      tags:
+        - Product
+      summary: List products owned by authenticated seller
+      operationId: getMyProducts
+
+      responses:
+        '200':
+          description: Products found
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProductSummaryResponse'
+
+  /products/{productId}:
+
+    get:
+      tags:
+        - Product
+      summary: Get product by id
+      operationId: getProductById
+
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+
+      responses:
+        '200':
+          description: Product found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetProductResponse'
+
+        '404':
+          description: Product not found
+
+    put:
+      tags:
+        - Product
+      summary: Update product
+      operationId: updateProduct
+
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProductRequest'
+
+      responses:
+        '200':
+          description: Product updated
+
+        '404':
+          description: Product not found
+
+    delete:
+      tags:
+        - Product
+      summary: Deactivate product
+      operationId: deactivateProduct
+
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+
+      responses:
+        '204':
+          description: Product deactivated
+
+        '404':
+          description: Product not found
+
+  /products/{productId}/inventory:
+
+    put:
+      tags:
+        - Inventory
+      summary: Update inventory
+      operationId: updateInventory
+
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateInventoryRequest'
+
+      responses:
+        '200':
+          description: Inventory updated
+
+        '404':
+          description: Product not found
+
+components:
+
+  schemas:
+
+    CreateProductRequest:
+      type: object
+
+      required:
+        - title
+        - description
+        - price
+        - availableQuantity
+
+      properties:
+
+        title:
+          type: string
+          minLength: 3
+          maxLength: 120
+
+        description:
+          type: string
+          minLength: 10
+          maxLength: 5000
+
+        price:
+          type: number
+          format: double
+          minimum: 0.01
+
+        availableQuantity:
+          type: integer
+          minimum: 0
+
+        imageKeys:
+          type: array
+
+          items:
+            type: string
+
+    UpdateProductRequest:
+      type: object
+
+      required:
+        - title
+        - description
+        - price
+
+      properties:
+
+        title:
+          type: string
+          minLength: 3
+          maxLength: 120
+
+        description:
+          type: string
+          minLength: 10
+          maxLength: 5000
+
+        price:
+          type: number
+          format: double
+          minimum: 0.01
+
+        imageKeys:
+          type: array
+
+          items:
+            type: string
+
+    UpdateInventoryRequest:
+      type: object
+
+      required:
+        - availableQuantity
+
+      properties:
+
+        availableQuantity:
+          type: integer
+          minimum: 0
+
+    CreateProductResponse:
+      type: object
+
+      properties:
+
+        productId:
+          type: string
+
+        status:
+          $ref: '#/components/schemas/ProductStatus'
+
+    ProductSummaryResponse:
+      type: object
+
+      properties:
+
+        productId:
+          type: string
+
+        sellerId:
+          type: string
+          format: uuid
+
+        title:
+          type: string
+
+        price:
+          type: number
+          format: double
+
+        availableQuantity:
+          type: integer
+
+        imageKeys:
+          type: array
+
+          items:
+            type: string
+
+        status:
+          $ref: '#/components/schemas/ProductStatus'
+
+    GetProductResponse:
+      type: object
+
+      properties:
+
+        productId:
+          type: string
+
+        sellerId:
+          type: string
+          format: uuid
+
+        title:
+          type: string
+
+        description:
+          type: string
+
+        price:
+          type: number
+          format: double
+
+        availableQuantity:
+          type: integer
+
+        reservedQuantity:
+          type: integer
+
+        imageKeys:
+          type: array
+
+          items:
+            type: string
+
+        status:
+          $ref: '#/components/schemas/ProductStatus'
+
+        createdAt:
+          type: string
+          format: date-time
+
+        updatedAt:
+          type: string
+          format: date-time
+
+    ProductStatus:
+      type: string
+
+      enum:
+        - ACTIVE
+        - INACTIVE

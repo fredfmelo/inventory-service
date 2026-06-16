@@ -1,6 +1,6 @@
 spring:
   application:
-    name: order-service
+    name: inventory-service
 
 management:
   endpoints:
@@ -21,3 +21,7 @@ aws:
     order-topic-arn: arn:aws:sns:us-east-1:200849340204:order-events
   sqs:
     inventory-queue: inventory-queue
+
+security:
+  jwt:
+    secret: ${JWT_SECRET:change-me-this-is-a-dev-only-secret-key-32-chars}
