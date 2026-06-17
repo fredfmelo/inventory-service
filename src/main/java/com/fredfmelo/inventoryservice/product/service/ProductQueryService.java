@@ -12,6 +12,7 @@ import com.fredfmelo.inventoryservice.product.domain.InventoryEntity;
 import com.fredfmelo.inventoryservice.product.domain.ProductEntity;
 import com.fredfmelo.inventoryservice.product.mapper.ProductMapper;
 import com.fredfmelo.inventoryservice.product.repository.ProductRepository;
+import com.fredfmelo.inventoryservice.security.Role;
 import com.fredfmelo.inventoryservice.security.UserContext;
 
 import lombok.RequiredArgsConstructor;
@@ -25,13 +26,20 @@ public class ProductQueryService {
     private final ProductRepository productRepository;
     private final ProductMapper productMapper;
 
-    public List<ProductSummaryResponse> getProducts(Boolean active) {
-        return productRepository.findAll(active).stream()
+    public List<ProductSummaryResponse> getProducts(UUID sellerId, Boolean active) {
+        return productRepository.findAll(sellerId, active).stream()
                 .map(product -> productMapper.toSummaryResponse(product, null))
                 .toList();
     }
 
     public List<ProductSummaryResponse> getMyProducts(UserContext userContext) {
+        if (userContext == null) {
+            throw new BusinessException("Authentication required", 401);
+        }
+        if (!userContext.isSeller() && !userContext.isAdmin()) {
+            throw new BusinessException("Role '" + Role.SELLER + "' is required to perform this action", 403);
+        }
+
         return productRepository.findBySellerId(userContext.userId()).stream()
                 .map(product -> productMapper.toSummaryResponse(product, null))
                 .toList();

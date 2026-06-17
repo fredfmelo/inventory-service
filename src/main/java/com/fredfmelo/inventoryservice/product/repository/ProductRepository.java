@@ -12,6 +12,7 @@ import com.fredfmelo.eventdrivencore.exception.TechnicalException;
 import com.fredfmelo.inventoryservice.config.ServiceConfig;
 import com.fredfmelo.inventoryservice.product.domain.InventoryEntity;
 import com.fredfmelo.inventoryservice.product.domain.ProductEntity;
+import com.fredfmelo.inventoryservice.product.domain.ProductImageEntity;
 
 import lombok.extern.slf4j.Slf4j;
 import software.amazon.awssdk.core.exception.SdkException;
@@ -42,6 +43,7 @@ public class ProductRepository {
 
     private final DynamoDbTable<ProductEntity> productTable;
     private final DynamoDbTable<InventoryEntity> inventoryTable;
+    private final DynamoDbTable<ProductImageEntity> imageTable;
     private final DynamoDbEnhancedClient enhancedClient;
     private final DynamoDbClient dynamoDbClient;
     private final String tableName;
@@ -54,6 +56,7 @@ public class ProductRepository {
         this.tableName = serviceConfig.tableName();
         this.productTable = enhancedClient.table(tableName, TableSchema.fromBean(ProductEntity.class));
         this.inventoryTable = enhancedClient.table(tableName, TableSchema.fromBean(InventoryEntity.class));
+        this.imageTable = enhancedClient.table(tableName, TableSchema.fromBean(ProductImageEntity.class));
     }
 
     public void saveProductWithInventory(ProductEntity product, InventoryEntity inventory) {
@@ -73,7 +76,7 @@ public class ProductRepository {
                     .partitionValue(PRODUCT_PREFIX + productId)
                     .sortValue(METADATA_SK)
                     .build();
-            return Optional.ofNullable(productTable.getItem(key));
+            return Optional.ofNullable(productTable.getItem(r -> r.key(key)));
         } catch (SdkException ex) {
             throw new TechnicalException("Failed to find product by id", ex);
         }
@@ -85,13 +88,16 @@ public class ProductRepository {
                     .partitionValue(PRODUCT_PREFIX + productId)
                     .sortValue(INVENTORY_SK)
                     .build();
-            return Optional.ofNullable(inventoryTable.getItem(key));
+            return Optional.ofNullable(inventoryTable.getItem(r -> r.key(key)));
         } catch (SdkException ex) {
             throw new TechnicalException("Failed to find inventory by product id", ex);
         }
     }
 
-    public List<ProductEntity> findAll(Boolean active) {
+    public List<ProductEntity> findAll(UUID sellerId, Boolean active) {
+        if (sellerId != null) {
+            return findBySellerId(sellerId, active);
+        }
         try {
             Expression filterExpression = buildMarketplaceFilter(active);
 
@@ -109,16 +115,27 @@ public class ProductRepository {
     }
 
     public List<ProductEntity> findBySellerId(UUID sellerId) {
+        return findBySellerId(sellerId, null);
+    }
+
+    private List<ProductEntity> findBySellerId(UUID sellerId, Boolean active) {
         try {
             DynamoDbIndex<ProductEntity> sellerIndex = productTable.index(SELLER_PRODUCTS_INDEX);
 
-            QueryEnhancedRequest request = QueryEnhancedRequest.builder()
+            QueryEnhancedRequest.Builder requestBuilder = QueryEnhancedRequest.builder()
                     .queryConditional(QueryConditional.keyEqualTo(
-                            Key.builder().partitionValue(sellerId.toString()).build()))
-                    .build();
+                            Key.builder().partitionValue(sellerId.toString()).build()));
+
+            if (active != null) {
+                requestBuilder.filterExpression(Expression.builder()
+                        .expression("#status = :status")
+                        .putExpressionName("#status", "status")
+                        .putExpressionValue(":status", AttributeValue.fromS(active ? "ACTIVE" : "INACTIVE"))
+                        .build());
+            }
 
             List<ProductEntity> products = new ArrayList<>();
-            sellerIndex.query(request).stream()
+            sellerIndex.query(requestBuilder.build()).stream()
                     .flatMap(page -> page.items().stream())
                     .forEach(products::add);
             return products;
@@ -138,15 +155,14 @@ public class ProductRepository {
 
     public void updateInventoryAvailableQuantity(UUID productId, int availableQuantity) {
         try {
-            InventoryEntity inventory = new InventoryEntity();
-            inventory.setPk(PRODUCT_PREFIX + productId);
-            inventory.setSk(INVENTORY_SK);
-            inventory.setProductId(productId.toString());
-            inventory.setAvailableQuantity(availableQuantity);
-
-            inventoryTable.updateItem(UpdateItemEnhancedRequest.builder(InventoryEntity.class)
-                    .item(inventory)
-                    .ignoreNulls(true)
+            dynamoDbClient.updateItem(UpdateItemRequest.builder()
+                    .tableName(tableName)
+                    .key(Map.of(
+                            "pk", AttributeValue.fromS(PRODUCT_PREFIX + productId),
+                            "sk", AttributeValue.fromS(INVENTORY_SK)))
+                    .updateExpression("SET availableQuantity = :qty")
+                    .expressionAttributeValues(Map.of(
+                            ":qty", AttributeValue.fromN(String.valueOf(availableQuantity))))
                     .build());
         } catch (SdkException ex) {
             throw new TechnicalException("Failed to update inventory", ex);
@@ -160,8 +176,8 @@ public class ProductRepository {
             UpdateItemRequest request = UpdateItemRequest.builder()
                     .tableName(tableName)
                     .key(Map.of(
-                            "PK", AttributeValue.fromS(pk),
-                            "SK", AttributeValue.fromS(INVENTORY_SK)))
+                            "pk", AttributeValue.fromS(pk),
+                            "sk", AttributeValue.fromS(INVENTORY_SK)))
                     .updateExpression(
                             "SET availableQuantity = availableQuantity - :qty, "
                             + "reservedQuantity = reservedQuantity + :qty")
@@ -181,11 +197,43 @@ public class ProductRepository {
         }
     }
 
+    public void saveImages(List<ProductImageEntity> images) {
+        try {
+            var writeRequest = TransactWriteItemsEnhancedRequest.builder();
+            images.forEach(image -> writeRequest.addPutItem(imageTable, image));
+            enhancedClient.transactWriteItems(writeRequest.build());
+        } catch (SdkException ex) {
+            throw new TechnicalException("Failed to save product images", ex);
+        }
+    }
+
+    public void appendImageKeys(UUID productId, List<String> newKeys) {
+        try {
+            List<AttributeValue> keyValues = newKeys.stream()
+                    .map(AttributeValue::fromS)
+                    .toList();
+
+            dynamoDbClient.updateItem(UpdateItemRequest.builder()
+                    .tableName(tableName)
+                    .key(Map.of(
+                            "pk", AttributeValue.fromS(PRODUCT_PREFIX + productId),
+                            "sk", AttributeValue.fromS(METADATA_SK)))
+                    .updateExpression(
+                            "SET imageKeys = list_append(if_not_exists(imageKeys, :empty), :newKeys)")
+                    .expressionAttributeValues(Map.of(
+                            ":empty", AttributeValue.fromL(List.of()),
+                            ":newKeys", AttributeValue.fromL(keyValues)))
+                    .build());
+        } catch (SdkException ex) {
+            throw new TechnicalException("Failed to append image keys to product", ex);
+        }
+    }
+
     private Expression buildMarketplaceFilter(Boolean active) {
         if (active == null) {
             return Expression.builder()
                     .expression("#sk = :sk AND #status = :status")
-                    .putExpressionName("#sk", "SK")
+                    .putExpressionName("#sk", "sk")
                     .putExpressionName("#status", "status")
                     .putExpressionValue(":sk", AttributeValue.fromS(METADATA_SK))
                     .putExpressionValue(":status", AttributeValue.fromS("ACTIVE"))
@@ -194,7 +242,7 @@ public class ProductRepository {
 
         return Expression.builder()
                 .expression("#sk = :sk AND #status = :status")
-                .putExpressionName("#sk", "SK")
+                .putExpressionName("#sk", "sk")
                 .putExpressionName("#status", "status")
                 .putExpressionValue(":sk", AttributeValue.fromS(METADATA_SK))
                 .putExpressionValue(":status", AttributeValue.fromS(active ? "ACTIVE" : "INACTIVE"))

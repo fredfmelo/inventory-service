@@ -19,9 +19,8 @@ aws:
 
   sns:
     order-topic-arn: arn:aws:sns:us-east-1:200849340204:order-events
+
+  s3:
+    bucket-name: ${S3_BUCKET_NAME:marketplace-inventory-dev}
   sqs:
     inventory-queue: inventory-queue
-
-security:
-  jwt:
-    secret: ${JWT_SECRET:change-me-this-is-a-dev-only-secret-key-32-chars}

@@ -2,7 +2,6 @@ package com.fredfmelo.inventoryservice.product.service;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.List;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
@@ -16,6 +15,7 @@ import com.fredfmelo.inventoryservice.product.domain.InventoryEntity;
 import com.fredfmelo.inventoryservice.product.domain.ProductEntity;
 import com.fredfmelo.inventoryservice.product.mapper.ProductMapper;
 import com.fredfmelo.inventoryservice.product.repository.ProductRepository;
+import com.fredfmelo.inventoryservice.security.Role;
 import com.fredfmelo.inventoryservice.security.UserContext;
 
 import lombok.RequiredArgsConstructor;
@@ -34,6 +34,9 @@ public class ProductCommandService {
     private final ProductMapper productMapper;
 
     public CreateProductResponse createProduct(CreateProductRequest request, UserContext userContext) {
+        requireAuthenticated(userContext);
+        requireRole(userContext, Role.SELLER);
+
         UUID productId = UUID.randomUUID();
         Instant now = Instant.now();
 
@@ -48,13 +51,13 @@ public class ProductCommandService {
     }
 
     public void updateProduct(UUID productId, UpdateProductRequest request, UserContext userContext) {
+        requireAuthenticated(userContext);
         ProductEntity product = findProductOrThrow(productId);
         verifyOwnership(product, userContext);
 
         product.setTitle(request.getTitle());
         product.setDescription(request.getDescription());
         product.setPrice(request.getPrice() != null ? BigDecimal.valueOf(request.getPrice()) : product.getPrice());
-        product.setImageKeys(request.getImageKeys());
         product.setUpdatedAt(Instant.now());
 
         productRepository.updateProduct(product);
@@ -63,6 +66,8 @@ public class ProductCommandService {
     }
 
     public void deactivateProduct(UUID productId, UserContext userContext) {
+        requireAuthenticated(userContext);
+        requireRole(userContext, Role.SELLER);
         ProductEntity product = findProductOrThrow(productId);
         verifyOwnership(product, userContext);
 
@@ -75,6 +80,8 @@ public class ProductCommandService {
     }
 
     public void updateInventory(UUID productId, UpdateInventoryRequest request, UserContext userContext) {
+        requireAuthenticated(userContext);
+        requireRole(userContext, Role.SELLER);
         ProductEntity product = findProductOrThrow(productId);
         verifyOwnership(product, userContext);
 
@@ -88,6 +95,18 @@ public class ProductCommandService {
 
         log.info("Inventory updated productId={} availableQuantity={} sellerId={}",
                 productId, availableQuantity, userContext.userId());
+    }
+
+    private void requireAuthenticated(UserContext userContext) {
+        if (userContext == null) {
+            throw new BusinessException("Authentication required", 401);
+        }
+    }
+
+    private void requireRole(UserContext userContext, Role role) {
+        if (!userContext.hasRole(role) && !userContext.isAdmin()) {
+            throw new BusinessException("Role '" + role + "' is required to perform this action", 403);
+        }
     }
 
     private ProductEntity findProductOrThrow(UUID productId) {
@@ -112,7 +131,6 @@ public class ProductCommandService {
         entity.setDescription(request.getDescription());
         entity.setPrice(request.getPrice() != null ? BigDecimal.valueOf(request.getPrice()) : null);
         entity.setStatus("ACTIVE");
-        entity.setImageKeys(request.getImageKeys() != null ? request.getImageKeys() : List.of());
         entity.setAvailableQuantity(request.getAvailableQuantity() != null ? request.getAvailableQuantity() : 0);
         entity.setCreatedAt(now);
         entity.setUpdatedAt(now);

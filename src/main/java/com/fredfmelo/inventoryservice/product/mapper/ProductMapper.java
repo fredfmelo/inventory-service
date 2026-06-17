@@ -20,10 +20,13 @@ public interface ProductMapper {
     @Mapping(source = "product.productId", target = "productId")
     @Mapping(source = "product.sellerId", target = "sellerId")
     @Mapping(source = "product.title", target = "title")
+    @Mapping(source = "product.description", target = "description")
     @Mapping(source = "product.price", target = "price")
     @Mapping(source = "product.availableQuantity", target = "availableQuantity")
     @Mapping(source = "product.imageKeys", target = "imageKeys")
     @Mapping(source = "product.status", target = "status")
+    @Mapping(source = "product.createdAt", target = "createdAt")
+    @Mapping(source = "product.updatedAt", target = "updatedAt")
     ProductSummaryResponse toSummaryResponse(ProductEntity product, InventoryEntity inventory);
 
     @Mapping(source = "product.productId", target = "productId")

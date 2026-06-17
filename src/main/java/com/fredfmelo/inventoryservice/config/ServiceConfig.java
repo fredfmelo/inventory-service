@@ -21,6 +21,7 @@ public class ServiceConfig implements DynamoProperties {
     public static class Aws {
         private DynamoDb dynamodb;
         private Sns sns;
+        private S3 s3;
     }
 
     @Getter
@@ -33,6 +34,12 @@ public class ServiceConfig implements DynamoProperties {
     @Setter
     public static class Sns {
         private String orderTopicArn;
+    }
+
+    @Getter
+    @Setter
+    public static class S3 {
+        private String bucketName;
     }
 
     @Override

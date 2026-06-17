@@ -28,7 +28,7 @@ public class ProductEntity {
     private Instant updatedAt;
 
     @DynamoDbPartitionKey
-    @DynamoDbAttribute("PK")
+    @DynamoDbAttribute("pk")
     public String getPk() {
         return pk;
     }
@@ -38,7 +38,7 @@ public class ProductEntity {
     }
 
     @DynamoDbSortKey
-    @DynamoDbAttribute("SK")
+    @DynamoDbAttribute("sk")
     public String getSk() {
         return sk;
     }

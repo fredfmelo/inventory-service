@@ -1,18 +1,21 @@
 package com.fredfmelo.inventoryservice.product.domain;
 
+import java.time.Instant;
+
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbAttribute;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbPartitionKey;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbSortKey;
 
 @DynamoDbBean
-public class InventoryEntity {
+public class ProductImageEntity {
 
     private String pk;
     private String sk;
+    private String imageId;
     private String productId;
-    private int availableQuantity;
-    private int reservedQuantity;
+    private String s3Key;
+    private Instant createdAt;
 
     @DynamoDbPartitionKey
     @DynamoDbAttribute("pk")
@@ -34,6 +37,14 @@ public class InventoryEntity {
         this.sk = sk;
     }
 
+    public String getImageId() {
+        return imageId;
+    }
+
+    public void setImageId(String imageId) {
+        this.imageId = imageId;
+    }
+
     public String getProductId() {
         return productId;
     }
@@ -42,19 +53,19 @@ public class InventoryEntity {
         this.productId = productId;
     }
 
-    public int getAvailableQuantity() {
-        return availableQuantity;
+    public String getS3Key() {
+        return s3Key;
     }
 
-    public void setAvailableQuantity(int availableQuantity) {
-        this.availableQuantity = availableQuantity;
+    public void setS3Key(String s3Key) {
+        this.s3Key = s3Key;
     }
 
-    public int getReservedQuantity() {
-        return reservedQuantity;
+    public Instant getCreatedAt() {
+        return createdAt;
     }
 
-    public void setReservedQuantity(int reservedQuantity) {
-        this.reservedQuantity = reservedQuantity;
+    public void setCreatedAt(Instant createdAt) {
+        this.createdAt = createdAt;
     }
 }

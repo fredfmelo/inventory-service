@@ -1,15 +1,18 @@
 package com.fredfmelo.inventoryservice.security;
 
-import java.util.List;
 import java.util.UUID;
 
-public record UserContext(UUID userId, List<String> roles) {
+public record UserContext(UUID userId, Role role) {
 
     public boolean isAdmin() {
-        return roles.contains("ADMIN");
+        return role == Role.ADMIN;
     }
 
     public boolean isSeller() {
-        return roles.contains("SELLER");
+        return role == Role.SELLER;
+    }
+
+    public boolean hasRole(Role role) {
+        return this.role == role;
     }
 }

@@ -5,6 +5,7 @@ import org.springframework.context.annotation.Configuration;
 
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.sns.SnsClient;
 
 @Configuration
@@ -20,6 +21,12 @@ public class AwsConfig {
     public DynamoDbEnhancedClient dynamoDbEnhancedClient(DynamoDbClient client) {
         return DynamoDbEnhancedClient.builder()
                 .dynamoDbClient(client)
+                .build();
+    }
+
+    @Bean
+    public S3Client s3Client() {
+        return S3Client.builder()
                 .build();
     }
 
