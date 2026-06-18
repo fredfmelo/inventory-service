@@ -29,7 +29,10 @@ import software.amazon.awssdk.enhanced.dynamodb.model.TransactWriteItemsEnhanced
 import software.amazon.awssdk.enhanced.dynamodb.model.UpdateItemEnhancedRequest;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
-import software.amazon.awssdk.services.dynamodb.model.ConditionalCheckFailedException;
+import software.amazon.awssdk.services.dynamodb.model.TransactionCanceledException;
+import software.amazon.awssdk.services.dynamodb.model.TransactWriteItem;
+import software.amazon.awssdk.services.dynamodb.model.TransactWriteItemsRequest;
+import software.amazon.awssdk.services.dynamodb.model.Update;
 import software.amazon.awssdk.services.dynamodb.model.UpdateItemRequest;
 
 @Slf4j
@@ -171,27 +174,56 @@ public class ProductRepository {
     }
 
     public boolean reserveInventory(UUID productId, int quantity) {
+        return reserveOrderItems(Map.of(productId, quantity));
+    }
+
+    public boolean reserveOrderItems(Map<UUID, Integer> itemsByProductId) {
+        if (itemsByProductId == null || itemsByProductId.isEmpty()) {
+            return true;
+        }
+
         try {
-            String pk = PRODUCT_PREFIX + productId;
+            List<TransactWriteItem> transactItems = new ArrayList<>();
 
-            UpdateItemRequest request = UpdateItemRequest.builder()
-                    .tableName(tableName)
-                    .key(Map.of(
-                            "pk", AttributeValue.fromS(pk),
-                            "sk", AttributeValue.fromS(INVENTORY_SK)))
-                    .updateExpression(
-                            "SET availableQuantity = availableQuantity - :qty, "
-                            + "reservedQuantity = reservedQuantity + :qty")
-                    .conditionExpression("availableQuantity >= :qty")
-                    .expressionAttributeValues(Map.of(
-                            ":qty", AttributeValue.fromN(String.valueOf(quantity))))
-                    .build();
+            for (Map.Entry<UUID, Integer> entry : itemsByProductId.entrySet()) {
+                String pk = PRODUCT_PREFIX + entry.getKey();
+                Map<String, AttributeValue> values = Map.of(
+                        ":qty", AttributeValue.fromN(String.valueOf(entry.getValue())));
 
-            dynamoDbClient.updateItem(request);
+                transactItems.add(TransactWriteItem.builder()
+                        .update(Update.builder()
+                                .tableName(tableName)
+                                .key(Map.of(
+                                        "pk", AttributeValue.fromS(pk),
+                                        "sk", AttributeValue.fromS(INVENTORY_SK)))
+                                .updateExpression(
+                                        "SET availableQuantity = availableQuantity - :qty, "
+                                        + "reservedQuantity = reservedQuantity + :qty")
+                                .conditionExpression("availableQuantity >= :qty")
+                                .expressionAttributeValues(values)
+                                .build())
+                        .build());
+
+                transactItems.add(TransactWriteItem.builder()
+                        .update(Update.builder()
+                                .tableName(tableName)
+                                .key(Map.of(
+                                        "pk", AttributeValue.fromS(pk),
+                                        "sk", AttributeValue.fromS(METADATA_SK)))
+                                .updateExpression("SET availableQuantity = availableQuantity - :qty")
+                                .conditionExpression("availableQuantity >= :qty")
+                                .expressionAttributeValues(values)
+                                .build())
+                        .build());
+            }
+
+            dynamoDbClient.transactWriteItems(TransactWriteItemsRequest.builder()
+                    .transactItems(transactItems)
+                    .build());
             return true;
 
-        } catch (ConditionalCheckFailedException ex) {
-            log.warn("Insufficient inventory for product={}", productId);
+        } catch (TransactionCanceledException ex) {
+            log.warn("Insufficient inventory for order reservation");
             return false;
         } catch (SdkException ex) {
             throw new TechnicalException("Failed to reserve inventory", ex);

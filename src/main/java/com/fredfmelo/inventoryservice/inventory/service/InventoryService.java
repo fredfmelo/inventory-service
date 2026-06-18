@@ -1,6 +1,9 @@
 package com.fredfmelo.inventoryservice.inventory.service;
 
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
@@ -8,6 +11,7 @@ import org.springframework.stereotype.Service;
 import com.fredfmelo.eventdrivencore.exception.BusinessException;
 import com.fredfmelo.eventdrivencore.outbox.service.OutboxService;
 import com.fredfmelo.inventoryservice.inventory.event.InventoryReservedEvent;
+import com.fredfmelo.inventoryservice.inventory.event.OrderItem;
 import com.fredfmelo.inventoryservice.inventory.event.PaymentApprovedEvent;
 import com.fredfmelo.inventoryservice.product.domain.ProductEntity;
 import com.fredfmelo.inventoryservice.product.repository.ProductRepository;
@@ -26,19 +30,20 @@ public class InventoryService {
     public void reserve(PaymentApprovedEvent paymentApprovedEvent) {
         log.info("Reserving inventory for orderId={}", paymentApprovedEvent.orderId());
 
-        UUID productId = UUID.fromString(paymentApprovedEvent.orderId());
-
-        ProductEntity product = productRepository.findProductById(productId)
-                .orElseThrow(() -> new BusinessException("Product not found: " + productId, 404));
-
-        if (!"ACTIVE".equals(product.getStatus())) {
-            throw new BusinessException("Product is not available for reservation: " + productId, 422);
+        List<OrderItem> items = paymentApprovedEvent.items();
+        if (items == null || items.isEmpty()) {
+            throw new BusinessException("Order has no items to reserve", 422);
         }
 
-        boolean reserved = productRepository.reserveInventory(productId, 1);
+        Map<UUID, Integer> itemsByProductId = mergeItemsByProduct(items);
 
+        for (Map.Entry<UUID, Integer> entry : itemsByProductId.entrySet()) {
+            validateProductForReservation(entry.getKey(), entry.getValue());
+        }
+
+        boolean reserved = productRepository.reserveOrderItems(itemsByProductId);
         if (!reserved) {
-            throw new BusinessException("Insufficient inventory for product: " + productId, 422);
+            throw new BusinessException("Insufficient inventory for order: " + paymentApprovedEvent.orderId(), 422);
         }
 
         InventoryReservedEvent inventoryReservedEvent = new InventoryReservedEvent(
@@ -50,6 +55,29 @@ public class InventoryService {
 
         outboxService.save(inventoryReservedEvent);
 
-        log.info("Inventory reserved orderId={} productId={}", paymentApprovedEvent.orderId(), productId);
+        log.info("Inventory reserved orderId={} products={}", paymentApprovedEvent.orderId(), itemsByProductId.size());
+    }
+
+    private Map<UUID, Integer> mergeItemsByProduct(List<OrderItem> items) {
+        Map<UUID, Integer> merged = new HashMap<>();
+        for (OrderItem item : items) {
+            if (item.quantity() <= 0) {
+                throw new BusinessException("Item quantity must be greater than zero", 422);
+            }
+            UUID productId = UUID.fromString(item.productId());
+            merged.merge(productId, item.quantity(), Integer::sum);
+        }
+        return merged;
+    }
+
+    private void validateProductForReservation(UUID productId, int quantity) {
+        ProductEntity product = productRepository.findProductById(productId)
+                .orElseThrow(() -> new BusinessException("Product not found: " + productId, 404));
+
+        if (!"ACTIVE".equals(product.getStatus())) {
+            throw new BusinessException("Product is not available for reservation: " + productId, 422);
+        }
+
+        log.debug("Validated productId={} quantity={} for reservation", productId, quantity);
     }
 }
