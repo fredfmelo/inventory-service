@@ -21,6 +21,7 @@ import lombok.extern.slf4j.Slf4j;
 import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 @Slf4j
@@ -29,7 +30,7 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 public class ProductImageCommandService {
 
     private static final String IMAGE_SK_PREFIX = "IMAGE#";
-    private static final String S3_KEY_PATTERN = "products/%s/%s.%s";
+    private static final String S3_KEY_PATTERN = "inventory/products/%s/%s.%s";
 
     private final ProductRepository productRepository;
     private final S3Client s3Client;
@@ -65,6 +66,32 @@ public class ProductImageCommandService {
                 files.size(), productId, userContext.userId());
     }
 
+    public void deleteImage(UUID productId, UUID imageId, UserContext userContext) {
+        if (userContext == null) {
+            throw new BusinessException("Authentication required", 401);
+        }
+        if (!userContext.hasRole(Role.SELLER) && !userContext.isAdmin()) {
+            throw new BusinessException("Role '" + Role.SELLER + "' is required to perform this action", 403);
+        }
+
+        ProductEntity product = productRepository.findProductById(productId)
+                .orElseThrow(() -> new BusinessException("Product not found: " + productId, 404));
+
+        if (!product.getSellerId().equals(userContext.userId().toString()) && !userContext.isAdmin()) {
+            throw new BusinessException("Only the product owner can delete images", 403);
+        }
+
+        ProductImageEntity image = productRepository.findImageById(productId, imageId)
+                .orElseThrow(() -> new BusinessException("Image not found: " + imageId, 404));
+
+        deleteFromS3(image.getS3Key());
+        productRepository.deleteImage(productId, imageId);
+        productRepository.removeImageKey(productId, image.getS3Key());
+
+        log.info("Deleted imageId={} for productId={} sellerId={}",
+                imageId, productId, userContext.userId());
+    }
+
     private ProductImageEntity uploadAndBuildEntity(UUID productId, MultipartFile file) {
         UUID imageId = UUID.randomUUID();
         String extension = resolveExtension(file.getOriginalFilename(), file.getContentType());
@@ -80,6 +107,17 @@ public class ProductImageCommandService {
         entity.setS3Key(s3Key);
         entity.setCreatedAt(Instant.now());
         return entity;
+    }
+
+    private void deleteFromS3(String s3Key) {
+        try {
+            s3Client.deleteObject(DeleteObjectRequest.builder()
+                    .bucket(serviceConfig.getAws().getS3().getBucketName())
+                    .key(s3Key)
+                    .build());
+        } catch (SdkException ex) {
+            throw new TechnicalException("Failed to delete image from S3: " + s3Key, ex);
+        }
     }
 
     private void uploadToS3(String s3Key, MultipartFile file) {

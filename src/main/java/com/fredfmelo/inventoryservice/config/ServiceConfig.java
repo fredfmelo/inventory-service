@@ -40,6 +40,7 @@ public class ServiceConfig implements DynamoProperties {
     @Setter
     public static class S3 {
         private String bucketName;
+        private int presignedUrlExpirationMinutes = 15;
     }
 
     @Override

@@ -38,6 +38,7 @@ public class ProductRepository {
 
     private static final String METADATA_SK = "METADATA";
     private static final String INVENTORY_SK = "INVENTORY";
+    private static final String IMAGE_SK_PREFIX = "IMAGE#";
     private static final String PRODUCT_PREFIX = "PRODUCT#";
     private static final String SELLER_PRODUCTS_INDEX = "seller-products-index";
 
@@ -226,6 +227,79 @@ public class ProductRepository {
                     .build());
         } catch (SdkException ex) {
             throw new TechnicalException("Failed to append image keys to product", ex);
+        }
+    }
+
+    public List<ProductImageEntity> findImagesByProductId(UUID productId) {
+        try {
+            QueryEnhancedRequest request = QueryEnhancedRequest.builder()
+                    .queryConditional(QueryConditional.sortBeginsWith(Key.builder()
+                            .partitionValue(PRODUCT_PREFIX + productId)
+                            .sortValue(IMAGE_SK_PREFIX)
+                            .build()))
+                    .build();
+
+            List<ProductImageEntity> images = new ArrayList<>();
+            imageTable.query(request).stream()
+                    .flatMap(page -> page.items().stream())
+                    .forEach(images::add);
+            return images;
+
+        } catch (SdkException ex) {
+            throw new TechnicalException("Failed to find images by product id", ex);
+        }
+    }
+
+    public Optional<ProductImageEntity> findImageById(UUID productId, UUID imageId) {
+        try {
+            Key key = Key.builder()
+                    .partitionValue(PRODUCT_PREFIX + productId)
+                    .sortValue(IMAGE_SK_PREFIX + imageId)
+                    .build();
+            return Optional.ofNullable(imageTable.getItem(r -> r.key(key)));
+        } catch (SdkException ex) {
+            throw new TechnicalException("Failed to find image by id", ex);
+        }
+    }
+
+    public void deleteImage(UUID productId, UUID imageId) {
+        try {
+            Key key = Key.builder()
+                    .partitionValue(PRODUCT_PREFIX + productId)
+                    .sortValue(IMAGE_SK_PREFIX + imageId)
+                    .build();
+            imageTable.deleteItem(r -> r.key(key));
+        } catch (SdkException ex) {
+            throw new TechnicalException("Failed to delete product image", ex);
+        }
+    }
+
+    public void removeImageKey(UUID productId, String s3Key) {
+        try {
+            ProductEntity product = findProductById(productId)
+                    .orElseThrow(() -> new TechnicalException("Product not found: " + productId));
+
+            List<String> imageKeys = product.getImageKeys();
+            if (imageKeys == null || imageKeys.isEmpty()) {
+                return;
+            }
+
+            List<AttributeValue> updatedKeys = imageKeys.stream()
+                    .filter(key -> !key.equals(s3Key))
+                    .map(AttributeValue::fromS)
+                    .toList();
+
+            dynamoDbClient.updateItem(UpdateItemRequest.builder()
+                    .tableName(tableName)
+                    .key(Map.of(
+                            "pk", AttributeValue.fromS(PRODUCT_PREFIX + productId),
+                            "sk", AttributeValue.fromS(METADATA_SK)))
+                    .updateExpression("SET imageKeys = :keys")
+                    .expressionAttributeValues(Map.of(
+                            ":keys", AttributeValue.fromL(updatedKeys)))
+                    .build());
+        } catch (SdkException ex) {
+            throw new TechnicalException("Failed to remove image key from product", ex);
         }
     }
 

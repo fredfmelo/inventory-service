@@ -193,6 +193,35 @@ paths:
         '404':
           description: Product not found
 
+  /products/{productId}/images/{imageId}:
+
+    delete:
+      tags:
+        - Product
+      summary: Delete product image
+      operationId: deleteProductImage
+
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: imageId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+
+      responses:
+        '204':
+          description: Image deleted
+
+        '404':
+          description: Product or image not found
+
   /products/{productId}/inventory:
 
     put:
@@ -330,11 +359,10 @@ components:
         availableQuantity:
           type: integer
 
-        imageKeys:
+        images:
           type: array
-
           items:
-            type: string
+            $ref: '#/components/schemas/ProductImageResponse'
 
         status:
           $ref: '#/components/schemas/ProductStatus'
@@ -375,11 +403,10 @@ components:
         reservedQuantity:
           type: integer
 
-        imageKeys:
+        images:
           type: array
-
           items:
-            type: string
+            $ref: '#/components/schemas/ProductImageResponse'
 
         status:
           $ref: '#/components/schemas/ProductStatus'
@@ -391,6 +418,19 @@ components:
         updatedAt:
           type: string
           format: date-time
+
+    ProductImageResponse:
+      type: object
+
+      properties:
+
+        imageId:
+          type: string
+          format: uuid
+
+        url:
+          type: string
+          format: uri
 
     ProductStatus:
       type: string

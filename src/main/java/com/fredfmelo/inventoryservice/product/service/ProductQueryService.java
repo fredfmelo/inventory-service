@@ -25,10 +25,11 @@ public class ProductQueryService {
 
     private final ProductRepository productRepository;
     private final ProductMapper productMapper;
+    private final S3PresignedUrlService s3PresignedUrlService;
 
     public List<ProductSummaryResponse> getProducts(UUID sellerId, Boolean active) {
         return productRepository.findAll(sellerId, active).stream()
-                .map(product -> productMapper.toSummaryResponse(product, null))
+                .map(this::toSummaryResponse)
                 .toList();
     }
 
@@ -41,7 +42,7 @@ public class ProductQueryService {
         }
 
         return productRepository.findBySellerId(userContext.userId()).stream()
-                .map(product -> productMapper.toSummaryResponse(product, null))
+                .map(this::toSummaryResponse)
                 .toList();
     }
 
@@ -52,6 +53,20 @@ public class ProductQueryService {
         InventoryEntity inventory = productRepository.findInventoryById(productId)
                 .orElseThrow(() -> new BusinessException("Inventory not found for product: " + productId, 404));
 
-        return productMapper.toGetResponse(product, inventory);
+        return toGetResponse(product, inventory);
+    }
+
+    private ProductSummaryResponse toSummaryResponse(ProductEntity product) {
+        ProductSummaryResponse response = productMapper.toSummaryResponse(product, null);
+        response.setImages(s3PresignedUrlService.toImageResponses(
+                productRepository.findImagesByProductId(UUID.fromString(product.getProductId()))));
+        return response;
+    }
+
+    private GetProductResponse toGetResponse(ProductEntity product, InventoryEntity inventory) {
+        GetProductResponse response = productMapper.toGetResponse(product, inventory);
+        response.setImages(s3PresignedUrlService.toImageResponses(
+                productRepository.findImagesByProductId(UUID.fromString(product.getProductId()))));
+        return response;
     }
 }

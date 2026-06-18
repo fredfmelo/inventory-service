@@ -85,6 +85,13 @@ public class ProductController implements ProductsApi {
     }
 
     @Override
+    public ResponseEntity<Void> deleteProductImage(UUID productId, UUID imageId) {
+        UserContext userContext = userContextExtractor.extract(nativeWebRequest);
+        productImageCommandService.deleteImage(productId, imageId, userContext);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Override
     public ResponseEntity<Void> updateInventory(UUID productId, UpdateInventoryRequest updateInventoryRequest) {
         UserContext userContext = userContextExtractor.extract(nativeWebRequest);
         productCommandService.updateInventory(productId, updateInventoryRequest, userContext);

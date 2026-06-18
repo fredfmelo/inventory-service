@@ -16,11 +16,10 @@ server:
 aws:
   dynamodb:
     table-name: INVENTORY
-
   sns:
     order-topic-arn: arn:aws:sns:us-east-1:200849340204:order-events
-
   s3:
-    bucket-name: ${S3_BUCKET_NAME:marketplace-inventory-dev}
+    bucket-name: marketplace-dev-fredfmelo
+    presigned-url-expiration-minutes: 15
   sqs:
     inventory-queue: inventory-queue
