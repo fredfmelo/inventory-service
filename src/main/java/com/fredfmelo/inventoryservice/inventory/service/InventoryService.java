@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Service;
 import com.fredfmelo.eventdrivencore.exception.BusinessException;
 import com.fredfmelo.eventdrivencore.outbox.service.OutboxService;
 import com.fredfmelo.inventoryservice.inventory.event.InventoryReservedEvent;
+import com.fredfmelo.inventoryservice.inventory.event.InventoryUnavailableEvent;
 import com.fredfmelo.inventoryservice.inventory.event.OrderItem;
 import com.fredfmelo.inventoryservice.inventory.event.PaymentApprovedEvent;
 import com.fredfmelo.inventoryservice.product.domain.ProductEntity;
@@ -23,6 +25,10 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 @RequiredArgsConstructor
 public class InventoryService {
+
+    static final String REASON_INSUFFICIENT_STOCK = "INSUFFICIENT_STOCK";
+    static final String REASON_PRODUCT_NOT_FOUND = "PRODUCT_NOT_FOUND";
+    static final String REASON_PRODUCT_INACTIVE = "PRODUCT_INACTIVE";
 
     private final OutboxService outboxService;
     private final ProductRepository productRepository;
@@ -37,13 +43,16 @@ public class InventoryService {
 
         Map<UUID, Integer> itemsByProductId = mergeItemsByProduct(items);
 
-        for (Map.Entry<UUID, Integer> entry : itemsByProductId.entrySet()) {
-            validateProductForReservation(entry.getKey(), entry.getValue());
+        Optional<String> validationFailure = validateProductsForReservation(itemsByProductId);
+        if (validationFailure.isPresent()) {
+            publishInventoryUnavailable(paymentApprovedEvent, items, validationFailure.get());
+            return;
         }
 
         boolean reserved = productRepository.reserveOrderItems(itemsByProductId);
         if (!reserved) {
-            throw new BusinessException("Insufficient inventory for order: " + paymentApprovedEvent.orderId(), 422);
+            publishInventoryUnavailable(paymentApprovedEvent, items, REASON_INSUFFICIENT_STOCK);
+            return;
         }
 
         InventoryReservedEvent inventoryReservedEvent = new InventoryReservedEvent(
@@ -70,14 +79,33 @@ public class InventoryService {
         return merged;
     }
 
-    private void validateProductForReservation(UUID productId, int quantity) {
-        ProductEntity product = productRepository.findProductById(productId)
-                .orElseThrow(() -> new BusinessException("Product not found: " + productId, 404));
-
-        if (!"ACTIVE".equals(product.getStatus())) {
-            throw new BusinessException("Product is not available for reservation: " + productId, 422);
+    private Optional<String> validateProductsForReservation(Map<UUID, Integer> itemsByProductId) {
+        for (UUID productId : itemsByProductId.keySet()) {
+            Optional<ProductEntity> product = productRepository.findProductById(productId);
+            if (product.isEmpty()) {
+                return Optional.of(REASON_PRODUCT_NOT_FOUND);
+            }
+            if (!"ACTIVE".equals(product.get().getStatus())) {
+                return Optional.of(REASON_PRODUCT_INACTIVE);
+            }
         }
+        return Optional.empty();
+    }
 
-        log.debug("Validated productId={} quantity={} for reservation", productId, quantity);
+    private void publishInventoryUnavailable(PaymentApprovedEvent paymentApprovedEvent,
+            List<OrderItem> items,
+            String reason) {
+        InventoryUnavailableEvent event = new InventoryUnavailableEvent(
+                UUID.randomUUID(),
+                paymentApprovedEvent.traceId(),
+                "INVENTORY_UNAVAILABLE",
+                Instant.now(),
+                paymentApprovedEvent.orderId(),
+                items,
+                reason);
+
+        outboxService.save(event);
+
+        log.warn("Inventory unavailable orderId={} reason={}", paymentApprovedEvent.orderId(), reason);
     }
 }
